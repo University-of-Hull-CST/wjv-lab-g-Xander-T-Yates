@@ -89,3 +89,54 @@ Secondary threads perform calculations incorrectly, likely due to a race conditi
 By completing this exercise I have learned about the difficulty of multithreading comparisons on a list in Rust, and how race conditions can break the functionality of a program without necessarily causing any errors.
 
 <br></br>
+
+## Q2: Recording collisions using an Atomic
+
+### Question(s)
+
+![alt text](image-7.png)
+
+![alt text](image-8.png)
+
+### Solutions & sample outputs
+
+New data within `ParticleSystem` struct:
+
+```rs
+collision_counter: Arc<AtomicUsize>
+```
+
+Initialiser:
+
+```rs
+collision_counter: Arc::new(AtomicUsize::new(0))
+```
+
+Modified threadpool initialisation:
+
+```rs
+for i in 0..thread_count {
+    let clone = self.particles.clone();
+    let counter_clone = Arc::clone(&self.collision_counter);
+    scope.execute(move || thread_collide(&clone, &counter_clone, particles_per_thread, thread_id));
+    thread_id += 1;
+}
+```
+
+Modified increment code:
+
+```rs
+collision_count.fetch_add(1, Ordering::Relaxed);
+```
+
+Output:
+
+![alt text](image-9.png)
+
+(This is still with the race condition occuring)
+
+### Reflection
+
+Through this exercise I learned how to use Atomics to allow for counting across multiple threads.
+
+<br></br>
