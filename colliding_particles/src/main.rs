@@ -4,14 +4,21 @@ use rand::{random_bool, random_range, rng, Rng};
 #[derive(Debug, Copy, Clone)]
 pub struct Particle {
     x: f32,
-    y: f32
+    y: f32,
+    id: usize
 }
 impl Particle {
-    pub fn new(x_param:f32, y_param:f32) -> Particle {
+    pub fn new(x_param:f32, y_param:f32, id_param: usize) -> Particle {
         Particle {
             x: x_param,
-            y: y_param
+            y: y_param,
+            id:id_param
         }
+    }
+    pub fn collide(&self, other: &Particle) -> bool {
+        let x = other.x - self.x;
+        let y = other.y - self.y;
+        return x * x + y * y <= 0.25 * 0.25;
     }
 }
 
@@ -47,6 +54,25 @@ impl ParticleSystem {
         let duration = time::Instant::now().duration_since(start_time);
         println!("Took {} ms to move {} particles {} times", duration.as_millis(), self.particles.len(), num_iterations);
     }
+    pub fn collide_particles(&mut self) {
+        let list_len = self.particles.len();
+        let thread_count = 1;
+        let particles_per_thread = self.particles.len() / thread_count;
+        let mut collision_pool = scoped_threadpool::Pool::new(thread_count as u32);
+
+        println!("Checking collisions...");
+        let start_time = time::Instant::now();
+
+        collision_pool.scoped(|scope| {
+            let mut thread_id = 0usize;
+            let clone = self.particles.clone();
+            scope.execute(move || thread_collide(&clone, thread_id));
+            thread_id += 1;
+        });
+
+        let duration = time::Instant::now().duration_since(start_time);
+        println!("Took {} ms to check collisions", duration.as_millis());
+    }
 }
 
 const PARTICLE_COUNT:usize = 100;
@@ -65,7 +91,7 @@ fn main() {
         let y = random_range(-PARTICLE_BOUNDS_HALF.1..PARTICLE_BOUNDS_HALF.1);
 
         // Create instance with generated position
-        let particle = Particle::new(x, y);
+        let particle = Particle::new(x, y, i);
 
         // Announce position
         // println!("Created particle {} with position ({}, {})", i, particle.x, particle.y);
@@ -76,6 +102,7 @@ fn main() {
 
     // Run loop
     particle_system.move_particles_loop();
+    particle_system.collide_particles();
 }
 fn thread_main(chunk: &mut [Particle], iteration_count: i32, thread_index: usize) {
     let chunk_size = chunk.len();
@@ -115,4 +142,22 @@ fn thread_main(chunk: &mut [Particle], iteration_count: i32, thread_index: usize
             // println!("Particle {} moved. New position: ({}, {})", i + (chunk_size * thread_index), chunk[i].x, chunk[i].y);
         }
     }
+}
+fn thread_collide(list: &Vec<Particle>, thread_id: usize) {
+    let start_time = time::Instant::now();
+    let list_size = list.len();
+    let mut collision_count = 0;
+
+    for i in 0..list_size - 1 {
+        // Due to the progression of i, j doesn't need to iterate through previous values of i.
+        for j in i + 1..list_size {
+            if (list[i].collide(&list[j])) {
+                collision_count += 1;
+                println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i, list[i].x, list[i].y, j, list[j].x, list[j].y);
+            }
+        }
+    }
+
+    let duration = time::Instant::now().duration_since(start_time);
+    println!("Thread {} spent {} ms on collision checking, and detected {} total collisions", thread_id, duration.as_millis(), collision_count);
 }
