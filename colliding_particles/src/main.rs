@@ -1,4 +1,5 @@
 use std::{time};
+use std::sync::{Arc, Mutex};
 use rand::{random_bool, random_range, rng, Rng};
 
 #[derive(Debug, Copy, Clone)]
@@ -56,8 +57,8 @@ impl ParticleSystem {
     }
     pub fn collide_particles(&mut self) {
         let list_len = self.particles.len();
-        let thread_count = 1;
-        let particles_per_thread = self.particles.len() / thread_count;
+        let thread_count = 12;
+        let particles_per_thread = list_len / thread_count;
         let mut collision_pool = scoped_threadpool::Pool::new(thread_count as u32);
 
         println!("Checking collisions...");
@@ -65,9 +66,12 @@ impl ParticleSystem {
 
         collision_pool.scoped(|scope| {
             let mut thread_id = 0usize;
-            let clone = self.particles.clone();
-            scope.execute(move || thread_collide(&clone, thread_id));
-            thread_id += 1;
+
+            for i in 0..thread_count {
+                let clone = self.particles.clone();
+                scope.execute(move || thread_collide(&clone, particles_per_thread, thread_id));
+                thread_id += 1;
+            }
         });
 
         let duration = time::Instant::now().duration_since(start_time);
@@ -143,18 +147,26 @@ fn thread_main(chunk: &mut [Particle], iteration_count: i32, thread_index: usize
         }
     }
 }
-fn thread_collide(list: &Vec<Particle>, thread_id: usize) {
+fn thread_collide(list: &Vec<Particle>, particles_per_thread: usize, thread_id: usize) {
     let start_time = time::Instant::now();
     let list_size = list.len();
     let mut collision_count = 0;
 
-    for i in 0..list_size - 1 {
-        // Due to the progression of i, j doesn't need to iterate through previous values of i.
-        for j in i + 1..list_size {
-            if (list[i].collide(&list[j])) {
-                collision_count += 1;
-                println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i, list[i].x, list[i].y, j, list[j].x, list[j].y);
-            }
+    let mut clone = list.clone();
+    let chunk = clone.chunks_mut(particles_per_thread).nth(thread_id).unwrap();
+
+    for i in 0..particles_per_thread - 1 {
+        let i_id = chunk[i].id;
+            for j in 0..list_size {
+                // Skip if comparing to self
+                if (i_id == j) {
+                    continue;
+                }
+
+                if (list[i].collide(&list[j])) {
+                    collision_count += 1;
+                    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, list[i].x, list[i].y, j, list[j].x, list[j].y);
+                }
         }
     }
 

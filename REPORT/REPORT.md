@@ -78,6 +78,14 @@ Output:
 
 ![alt text](image-5.png)
 
+Attempting to perform the same process with multiple threads:
+
+![alt text](image-6.png)
+
+Secondary threads perform calculations incorrectly, likely due to a race condition. Attempting to apply mutex locks caused the entire process to lock up, since the `i`th particles were locked, meaning if the `j`th value is encountered, a thread would be unable to progress.
+
 ### Reflection
+
+By completing this exercise I have learned about the difficulty of multithreading comparisons on a list in Rust, and how race conditions can break the functionality of a program without necessarily causing any errors.
 
 <br></br>
