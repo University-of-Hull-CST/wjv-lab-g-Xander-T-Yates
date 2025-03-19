@@ -170,7 +170,7 @@ fn thread_collide(list: &Vec<Particle>, collision_count: &AtomicUsize, particles
                 if (chunk[i].collide(&list[j])) {
                     local_collision_count += 1;
                     collision_count.fetch_add(1, Ordering::Relaxed);
-                    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, list[i].x, list[i].y, j, list[j].x, list[j].y);
+                    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, chunk[i].x, chunk[i].y, j, list[j].x, list[j].y);
                 }
         }
     }

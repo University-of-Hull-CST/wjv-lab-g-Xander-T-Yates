@@ -78,15 +78,23 @@ Output:
 
 ![alt text](image-5.png)
 
-Attempting to perform the same process with multiple threads:
+Modified code to allow for multiple thread use:
 
-![alt text](image-6.png)
+```rs
+let i_id = chunk[i].id;
+if (chunk[i].collide(&list[j])) {
+    collision_count += 1;
+    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, chunk[i].x, chunk[i].y, j, list[j].x, list[j].y);
+}
+```
 
-Secondary threads perform calculations incorrectly, likely due to a race condition. Attempting to apply mutex locks caused the entire process to lock up, since the `i`th particles were locked, meaning if the `j`th value is encountered, a thread would be unable to progress.
+Output with 12 threads:
+
+![alt text](image-10.png)
 
 ### Reflection
 
-By completing this exercise I have learned about the difficulty of multithreading comparisons on a list in Rust, and how race conditions can break the functionality of a program without necessarily causing any errors.
+By completing this exercise I have learned how to run comparisons on a single list across one or multiple threads through the use of chunks & list copies.
 
 <br></br>
 
@@ -131,9 +139,9 @@ collision_count.fetch_add(1, Ordering::Relaxed);
 
 Output:
 
-![alt text](image-9.png)
+![alt text](image-11.png)
 
-(This is still with the race condition occuring)
+Note the new total collsion line at the bottom.
 
 ### Reflection
 
