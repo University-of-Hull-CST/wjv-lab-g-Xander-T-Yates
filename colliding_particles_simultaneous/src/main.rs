@@ -82,9 +82,9 @@ impl ParticleSystem {
         println!("Took {} ms to check collisions. Detected {} collisions", duration.as_millis(), self.collision_counter.load(Ordering::Relaxed));
     }
     pub fn move_and_collide_particles(&mut self) {
-        let num_iterations = 10;
+        let num_iterations = 125000;
         let num_threads_total = 12;
-        let num_threads_movement = 6;
+        let num_threads_movement = 2;
         let num_threads_collision = num_threads_total - num_threads_movement;
         let num_particles_total = self.particles.len();
         let num_particles_movement = num_particles_total / num_threads_movement;
@@ -99,7 +99,7 @@ impl ParticleSystem {
         // Iteratively run threads
         for i in 0..num_iterations {
             // Run movement threads
-            println!("Moving {} particles across {} threads...", self.particles.len(), num_threads_movement);
+            // println!("Moving {} particles across {} threads...", self.particles.len(), num_threads_movement);
             pool_movement.scoped(|scope| {
                 let mut thread_id = 0usize;
                 for chunk in self.particles.chunks_mut(num_particles_movement) {
@@ -109,7 +109,7 @@ impl ParticleSystem {
             });
 
             // Run collision threads
-            println!("Checking collisions across {} threads...", num_threads_collision);
+            // println!("Checking collisions across {} threads...", num_threads_collision);
             pool_collision.scoped(|scope| {
                 let mut thread_id = 0usize;
                 for i in 0..num_threads_collision {
@@ -222,5 +222,5 @@ fn thread_collide(list: &Vec<Particle>, collision_count: &AtomicUsize, particles
     }
 
     let duration = time::Instant::now().duration_since(start_time);
-    println!("Thread {} spent {} ms on collision checking, and detected {} total collisions", thread_id, duration.as_millis(), local_collision_count);
+    // println!("Thread {} spent {} ms on collision checking, and detected {} total collisions", thread_id, duration.as_millis(), local_collision_count);
 }

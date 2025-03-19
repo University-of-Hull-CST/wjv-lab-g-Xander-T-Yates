@@ -93,7 +93,7 @@ Output with 12 threads:
 
 Due to the scoped threadpools, the collision checks are only run AFTER all movements are performed. As such, no iteration has been included in the function.
 
-At present, no locks or race conditions appear. However, if the collisions were running at the same time as the movements, or a non-atomic combined collision counter was present, those would both be cause for concern, as the program may attempt to read data being written (if no protection is present), or increment the collision counter at the same time as another thread.
+At present, no locks are required and no race conditions appear. However, if the collisions were running at the same time as the movements, or a combined collision counter was present, those would likely both be cause for concern (especially the latter), as the program may attempt to read data being written (if no protection is present), or increment the collision counter at the same time as another thread.
 
 The process of checking collisions was optimised by starting the partner check `j` at the value of `i_id`, or the position of `i` in the original vector. This prevents 1 collision from turning into 2 because of being detected on both particles, and decreases time spent processing checks that have already been completed.
 
@@ -219,6 +219,20 @@ Output w/ 6 threads for movement & 6 threads for collision:
 
 ![alt text](image-12.png)
 
+Without debug outputs, it takes around 125,000 iterations to achieve 10 seconds of runtime with this configuration:
+
+![alt text](image-13.png)
+
+After testing with different thread weights (on 12 threads), it appears the program runs fastest with 2 threads allocated to movement, and 10 threads allocated to collision:
+
+![alt text](image-14.png)
+
+Evidently, allocating more of the threads to the collision side of the program provides a considerable performance increase, as it is more computationally intensive than the movement side.
+
 ### Reflection
+
+Through this exercise I have become more familiar with how to order processes in such a way that allows multiple multi-threaded processes to run alongside one another in a somewhat rudimentary manner, but one that appears to be robust with data accessing.
+
+I have also gained an understanding of weighting threads so that more computationally intensive tasks are allocated more threads to improve performance.
 
 <br></br>
