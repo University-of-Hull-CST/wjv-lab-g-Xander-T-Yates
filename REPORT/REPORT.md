@@ -166,6 +166,59 @@ The reason the threads cannot currently be executed simultaneously is because th
 
 A solution to this could possibly be moving the iterations into the method creating and running the threadpools, as once the threadpool is created, the threads should not need to be re-initialised, meaning the threadpools could both be executed within one iteration before moving on to the next.
 
+Code:
+
+```rs
+pub fn move_and_collide_particles(&mut self) {
+    let num_iterations = 10;
+    let num_threads_total = 12;
+    let num_threads_movement = 6;
+    let num_threads_collision = num_threads_total - num_threads_movement;
+    let num_particles_total = self.particles.len();
+    let num_particles_movement = num_particles_total / num_threads_movement;
+    let num_particles_collision = num_particles_total / num_threads_collision;
+
+    let start_time = time::Instant::now();
+
+    // Set up thread pools
+    let mut pool_movement = scoped_threadpool::Pool::new(num_threads_movement as u32);
+    let mut pool_collision = scoped_threadpool::Pool::new(num_threads_collision as u32);
+
+    // Iteratively run threads
+    for i in 0..num_iterations {
+        // Run movement threads
+        println!("Moving {} particles across {} threads...", self.particles.len(), num_threads_movement);
+        pool_movement.scoped(|scope| {
+            let mut thread_id = 0usize;
+            for chunk in self.particles.chunks_mut(num_particles_movement) {
+                scope.execute(move || thread_main(chunk, 1, thread_id));
+                thread_id += 1;
+            }
+        });
+
+        // Run collision threads
+        println!("Checking collisions across {} threads...", num_threads_collision);
+        pool_collision.scoped(|scope| {
+            let mut thread_id = 0usize;
+            for i in 0..num_threads_collision {
+                let list_clone = self.particles.clone();
+                let collision_counter_clone = Arc::clone(&self.collision_counter);
+                scope.execute(move || thread_collide(&list_clone, &collision_counter_clone, num_particles_collision, thread_id));
+                thread_id += 1;
+            }
+        });
+    }
+
+    let duration = time::Instant::now().duration_since(start_time);
+    println!("Took {} ms to move {} particles & check collisions over {} iterations.", duration.as_millis(), num_particles_total, num_iterations);
+    println!("Detected {} collisions in total.", self.collision_counter.load(Ordering::Relaxed));
+}
+```
+
+Output w/ 6 threads for movement & 6 threads for collision:
+
+![alt text](image-12.png)
+
 ### Reflection
 
 <br></br>
