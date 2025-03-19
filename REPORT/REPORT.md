@@ -45,19 +45,28 @@ pub fn collide_particles(&mut self) {
 }
 ```
 
-New `thread_main` method for collision:
+New `thread` function for collision:
 
 ```rs
-fn thread_collide(list: &Vec<Particle>, thread_id: usize) {
+fn thread_collide(list: &Vec<Particle>, particles_per_thread: usize, thread_id: usize) {
     let start_time = time::Instant::now();
     let list_size = list.len();
     let mut collision_count = 0;
-    for i in 0..list_size - 1 {
-        // Due to the progression of i, j doesn't need to iterate through previous values of i.
-        for j in i + 1..list_size {
-            if (list[i].collide(&list[j])) {
+
+    let mut clone = list.clone();
+    let chunk = clone.chunks_mut(particles_per_thread).nth(thread_id).unwrap();
+
+    for i in 0..particles_per_thread - 1 {
+        let i_id = chunk[i].id;
+        for j in i_id + 1..list_size {
+            // Skip if comparing to self
+            if (i_id == j) {
+                continue;
+            }
+
+            if (chunk[i].collide(&list[j])) {
                 collision_count += 1;
-                println!("Collision found between particles {} ({}, {}) and {}! ({}, {})", i, list[i].x, list[i].y, j, list[j].x, list[j].y);
+                println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, chunk[i].x, chunk[i].y, j, list[j].x, list[j].y);
             }
         }
     }
@@ -74,23 +83,19 @@ particle_system.move_particles_loop();
 particle_system.collide_particles();
 ```
 
-Output:
+Output with 1 thread:
 
 ![alt text](image-5.png)
 
-Modified code to allow for multiple thread use:
-
-```rs
-let i_id = chunk[i].id;
-if (chunk[i].collide(&list[j])) {
-    collision_count += 1;
-    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, chunk[i].x, chunk[i].y, j, list[j].x, list[j].y);
-}
-```
-
 Output with 12 threads:
 
-![alt text](image-10.png)
+![alt text](image-6.png)
+
+Due to the scoped threadpools, the collision checks are only run AFTER all movements are performed. As such, no iteration has been included in the function.
+
+At present, no locks or race conditions appear. However, if the collisions were running at the same time as the movements, or a non-atomic combined collision counter was present, those would both be cause for concern, as the program may attempt to read data being written (if no protection is present), or increment the collision counter at the same time as another thread.
+
+The process of checking collisions was optimised by starting the partner check `j` at the value of `i_id`, or the position of `i` in the original vector. This prevents 1 collision from turning into 2 because of being detected on both particles, and decreases time spent processing checks that have already been completed.
 
 ### Reflection
 
@@ -145,6 +150,22 @@ Note the new total collsion line at the bottom.
 
 ### Reflection
 
-Through this exercise I learned how to use Atomics to allow for counting across multiple threads.
+Through this exercise I learned how to use Atomics to allow for safely combined counting across multiple threads.
+
+<br></br>
+
+## Q3: Ownership
+
+### Question(s)
+
+![alt text](image-10.png)
+
+### Solutions & sample outputs
+
+The reason the threads cannot currently be executed simultaneously is because they are initialised in different thread pools and then the threads run all iterations for the movement process, meaning the collision thread never has a chance to run until all movements are complete.
+
+A solution to this could possibly be moving the iterations into the method creating and running the threadpools, as once the threadpool is created, the threads should not need to be re-initialised, meaning the threadpools could both be executed within one iteration before moving on to the next.
+
+### Reflection
 
 <br></br>

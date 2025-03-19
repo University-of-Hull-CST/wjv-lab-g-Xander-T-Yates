@@ -1,6 +1,6 @@
 use std::{time};
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicI32, AtomicPtr, AtomicUsize, Ordering};
+use std::sync::{Arc};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use rand::{random_bool, random_range, rng, Rng};
 
 #[derive(Debug, Copy, Clone)]
@@ -161,7 +161,7 @@ fn thread_collide(list: &Vec<Particle>, collision_count: &AtomicUsize, particles
 
     for i in 0..particles_per_thread - 1 {
         let i_id = chunk[i].id;
-            for j in 0..list_size {
+            for j in i_id + 1..list_size {
                 // Skip if comparing to self
                 if (i_id == j) {
                     continue;

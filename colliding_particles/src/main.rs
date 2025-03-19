@@ -157,15 +157,15 @@ fn thread_collide(list: &Vec<Particle>, particles_per_thread: usize, thread_id: 
 
     for i in 0..particles_per_thread - 1 {
         let i_id = chunk[i].id;
-            for j in 0..list_size {
+            for j in i_id + 1..list_size {
                 // Skip if comparing to self
                 if (i_id == j) {
                     continue;
                 }
 
-                if (list[i].collide(&list[j])) {
+                if (chunk[i].collide(&list[j])) {
                     collision_count += 1;
-                    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, list[i].x, list[i].y, j, list[j].x, list[j].y);
+                    println!("Collision found between particles {} ({}, {}) and {} ({}, {})", i_id, chunk[i].x, chunk[i].y, j, list[j].x, list[j].y);
                 }
         }
     }
